@@ -6,3 +6,5 @@ setup-assets.ps1
 smoke.cjs
 upload-github.cjs
 publish-pages.cjs
+inspect-dog.cjs
+build-dog-sprites.cjs

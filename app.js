@@ -4,7 +4,7 @@
   const game = new PepperGame();
   let paused = false, muted = false, audio, best = 0, calloutLeft = 0;
   let heldPointer = null, heldAt = 0, holdTimer = 0, holdRepeat = 0;
-  let lastTime = performance.now(), lastVideoPaint = 0, videoMode = 'idle';
+  let lastTime = performance.now(), lossDelay = 0;
   try { best = Number(localStorage.getItem('pepper-pirate-best')) || 0; } catch {}
   $('best').textContent = best;
 
@@ -42,16 +42,16 @@
     $('game').classList.toggle('paused', paused);
     $('pause').setAttribute('aria-label', paused ? 'Продолжить' : 'Пауза');
     if (paused) {
-      video.pause(); overlay('МОЖНО ВЫДОХНУТЬ', 'ПАУЗА.', 'Перец подождёт. Собака тоже.', 'ПРОДОЛЖИТЬ →');
+      overlay('МОЖНО ВЫДОХНУТЬ', 'ПАУЗА.', 'Перец подождёт. Собака тоже.', 'ПРОДОЛЖИТЬ →');
     } else {
-      $('overlay').classList.add('hidden'); playVideo(); $('tease').focus({ preventScroll: true });
+      $('overlay').classList.add('hidden'); $('tease').focus({ preventScroll: true });
       lastTime = performance.now();
     }
   }
   function start() {
     unlockAudio();
     if (paused) { setPaused(false); return; }
-    resetHold(); game.start(); $('game').classList.remove('paused');
+    resetHold(); lossDelay = 0; game.start(); $('game').classList.remove('paused');
     $('overlay').classList.add('hidden'); $('callout').className = 'callout';
     $('tease').focus({ preventScroll: true }); lastTime = performance.now();
     processEvents(); render();
@@ -132,28 +132,19 @@
     const ctx = $('handCanvas').getContext('2d'); ctx.clearRect(0, 0, 600, 600);
     if (handFrames[game.bites]) ctx.drawImage(handFrames[game.bites], 0, 0);
   }
-  const video = document.createElement('video');
-  video.muted = true; video.playsInline = true; video.preload = 'auto';
-  video.src = 'assets/dog.mp4';
-  const dogCanvas = $('dogCanvas'); dogCanvas.width = dogCanvas.height = 400;
-  const dogCtx = dogCanvas.getContext('2d', { willReadFrequently: true });
-  function playVideo() { if (!paused && video.readyState >= 2) video.play().catch(() => {}); }
+  const dogCanvas = $('dogCanvas'); dogCanvas.width = dogCanvas.height = 320;
+  const dogAnimation = new DogAnimator(dogCanvas, $('dog'));
+  const dogPoster = new Image();
+  dogPoster.onload = () => {
+    if (dogAnimation.ready) return;
+    const ctx = dogCanvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(dogPoster, 0, 0, 320, 320); keyGreen(ctx, 320, 320);
+    $('dog').classList.add('video-ready');
+  };
+  dogPoster.src = 'assets/dog-head-reference.png';
   function animateDog(mode, duration) {
-    videoMode = mode;
-    if (video.readyState < 2) return;
-    video.playbackRate = mode === 'warning' ? 1 / duration : mode === 'bite' ? 1.8 : 1;
-    video.currentTime = mode === 'warning' ? 2 : mode === 'bite' ? 3 : .1;
-    playVideo();
-  }
-  video.addEventListener('loadeddata', () => { animateDog('idle'); paintVideo(); });
-  video.addEventListener('error', () => $('dog').classList.remove('video-ready'));
-  function paintVideo() {
-    if (video.readyState < 2 || video.seeking) return;
-    dogCtx.clearRect(0, 0, 400, 400); dogCtx.drawImage(video, 0, 0, 400, 400);
-    keyGreen(dogCtx, 400, 400); $('dog').classList.add('video-ready');
-    if (videoMode === 'idle' && video.currentTime > 1.65) video.currentTime = .1;
-    if (videoMode === 'warning' && video.currentTime > 2.95) video.pause();
-    if (videoMode === 'bite' && video.currentTime > 4.8) animateDog('idle');
+    if (mode === 'bite' || mode === 'miss') dogAnimation.setState('snap', .38, mode === 'bite' ? 'chew' : 'idle');
+    else dogAnimation.setState(mode, duration);
   }
   function crumbs() {
     for (let n = 0; n < 10; n++) {
@@ -170,7 +161,7 @@
       if (event.type === 'warning') { announce('УБИРАЙ!', false); tone(110, .25, 'sawtooth', 70); animateDog('warning', event.duration); }
       if (event.type === 'saved') {
         announce((event.perfect ? 'НА ГРАНИ! +' : 'УСПЕЛ! +') + event.points);
-        tone(event.perfect ? 660 : 440, .2, 'triangle', 990); record(); animateDog(event.perfect ? 'bite' : 'idle');
+        tone(event.perfect ? 660 : 440, .2, 'triangle', 990); record(); animateDog(event.perfect ? 'miss' : 'idle');
       }
       if (event.type === 'early') { announce('СМЕЛЕЕ! ПОДНЕСИ БЛИЖЕ'); animateDog('idle'); }
       if (event.type === 'round') { animateDog('idle'); resetHold(); }
@@ -179,8 +170,7 @@
         $('game').classList.remove('shake'); void $('game').offsetWidth; $('game').classList.add('shake');
         announce(event.type === 'lose' ? 'ПЕРЕЦ ЗАКОНЧИЛСЯ!' : 'КУСЬ! −1', false);
         if (event.type === 'lose') {
-          record(); overlay('ДОИГРАЛСЯ', 'ПЕРЕЦ КОНЧИЛСЯ.',
-            'Счёт: ' + game.score + '. Лучшая серия: ' + game.bestCombo + '. Ещё один перчик?', 'ЕЩЁ ПОПЫТКА →');
+          record(); lossDelay = .85;
         }
       }
     }
@@ -210,7 +200,16 @@
       }
       game.update(dt); processEvents(); render();
       if (calloutLeft > 0) { calloutLeft -= dt; if (calloutLeft <= 0) $('callout').classList.remove('show'); }
-      if (now - lastVideoPaint > 40) { paintVideo(); lastVideoPaint = now; }
+      if (game.phase === 'playing') {
+        const face = game.heat > 55 ? 'growl' : 'idle';
+        if (dogAnimation.state !== face) dogAnimation.setState(face);
+      }
+      dogAnimation.update(dt);
+      if (lossDelay > 0) {
+        lossDelay -= dt;
+        if (lossDelay <= 0) overlay('ДОИГРАЛСЯ', 'ПЕРЕЦ КОНЧИЛСЯ.',
+          'Счёт: ' + game.score + '. Лучшая серия: ' + game.bestCombo + '. Ещё один перчик?', 'ЕЩЁ ПОПЫТКА →');
+      }
     }
     requestAnimationFrame(frame);
   }

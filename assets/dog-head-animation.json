@@ -1,0 +1,55 @@
+{
+  "source": "dog-head-green.mp4",
+  "size": 320,
+  "columns": 5,
+  "clips": {
+    "idle": {
+      "start": 0.1,
+      "end": 1.9,
+      "frames": 24,
+      "seconds": 1.8,
+      "loop": true,
+      "size": 320,
+      "columns": 5,
+      "file": "dog-head-idle.webp"
+    },
+    "growl": {
+      "start": 2.05,
+      "end": 2.9,
+      "frames": 16,
+      "seconds": 0.9,
+      "loop": true,
+      "pingpong": true,
+      "size": 320,
+      "columns": 5,
+      "file": "dog-head-growl.webp"
+    },
+    "warning": {
+      "start": 3,
+      "end": 3.95,
+      "frames": 20,
+      "seconds": 0.7,
+      "size": 320,
+      "columns": 5,
+      "file": "dog-head-warning.webp"
+    },
+    "snap": {
+      "start": 4,
+      "end": 4.5,
+      "frames": 12,
+      "seconds": 0.42,
+      "size": 320,
+      "columns": 5,
+      "file": "dog-head-snap.webp"
+    },
+    "chew": {
+      "start": 4.55,
+      "end": 5.95,
+      "frames": 20,
+      "seconds": 1.2,
+      "size": 320,
+      "columns": 5,
+      "file": "dog-head-chew.webp"
+    }
+  }
+}

@@ -1,13 +1,13 @@
 const http = require('node:http'), fs = require('node:fs'), path = require('node:path');
 const base = __dirname, port = Number(process.env.PORT || 4174);
-const types = {'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript','.png':'image/png','.mp4':'video/mp4','.svg':'image/svg+xml'};
-const allowed = new Set(['index.html', 'style.css', 'polish.css', 'engine.js', 'app.js']);
+const types = {'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript','.png':'image/png','.webp':'image/webp','.mp4':'video/mp4','.svg':'image/svg+xml','.json':'application/json'};
+const allowed = new Set(['index.html', 'style.css', 'polish.css', 'engine.js', 'app.js', 'dog-animation.js']);
 http.createServer((req, res) => {
   let name;
   try { name = decodeURIComponent(new URL(req.url, 'http://localhost').pathname).replace(/^\/+/, '') || 'index.html'; }
   catch { res.writeHead(400).end(); return; }
   if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405).end(); return; }
-  if (!allowed.has(name) && !/^assets\/[\w.-]+\.(png|mp4|svg)$/.test(name)) { res.writeHead(404).end(); return; }
+  if (!allowed.has(name) && !/^assets\/[\w.-]+\.(png|webp|mp4|svg|json)$/.test(name)) { res.writeHead(404).end(); return; }
   const file = path.join(base, name);
   fs.stat(file, (err, stat) => {
     if (err || !stat.isFile()) { res.writeHead(404).end(); return; }

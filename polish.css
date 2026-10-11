@@ -11,5 +11,11 @@ button:disabled{cursor:default;filter:saturate(.35);opacity:.5}
 .controls button small{font-size:2cqw}
 .sweet{font-size:2cqw;white-space:nowrap;left:70%}
 .overlay h2{overflow-wrap:anywhere}
+.dog{right:0;top:50%;bottom:auto;width:90%;aspect-ratio:1;transform:translateY(-50%);filter:drop-shadow(3px 7px 3px #0008)}
+.dog-body{position:absolute;top:15%;left:18%;width:82%;height:auto;pointer-events:none}
+.dog canvas{position:absolute;left:12%;top:0;width:80%;height:auto;z-index:1}
+.hand{left:-45%;top:calc(50% - 50cqw);width:75%;transform:translateX(var(--reach,0%)) rotate(-3deg)}
+.callout{top:5%;font-size:7cqw}
+.speed-lines{right:12%;top:3%;font-size:11cqw}
 @media(max-height:650px) and (min-width:501px){.sidebar{padding-block:16px;width:275px}.side-copy h1{font-size:48px;margin:14px 0}.side-copy p,.side-copy ol,.side-rule{display:none}.right-rail{padding:20px 0}}
 @media(prefers-reduced-motion:reduce){.hand,.callout{transition:none}.crumb{animation-duration:.01s}.game.shake{animation:none}}
