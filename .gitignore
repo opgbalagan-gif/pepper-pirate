@@ -8,3 +8,4 @@ upload-github.cjs
 publish-pages.cjs
 inspect-dog.cjs
 build-dog-sprites.cjs
+capture-game.cjs
