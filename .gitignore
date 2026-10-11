@@ -1,0 +1,7 @@
+node_modules/
+*.log
+artifacts/
+PROJECT_STATUS.md
+setup-assets.ps1
+smoke.cjs
+upload-github.cjs

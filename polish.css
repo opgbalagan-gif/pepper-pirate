@@ -1,0 +1,15 @@
+/* Interaction and compact viewport adjustments. */
+.tap-zone{touch-action:none}
+button:disabled{cursor:default;filter:saturate(.35);opacity:.5}
+.controls button:disabled{opacity:.65}
+.sound{min-width:44px;min-height:28px}
+.game{min-height:0}
+.overlay-note{font-size:2.2cqw;line-height:1.6}
+.hint{font-size:2.3cqw;line-height:1.35}
+.streak{font-size:2.5cqw}
+.round{font-size:2.5cqw}
+.controls button small{font-size:2cqw}
+.sweet{font-size:2cqw;white-space:nowrap;left:70%}
+.overlay h2{overflow-wrap:anywhere}
+@media(max-height:650px) and (min-width:501px){.sidebar{padding-block:16px;width:275px}.side-copy h1{font-size:48px;margin:14px 0}.side-copy p,.side-copy ol,.side-rule{display:none}.right-rail{padding:20px 0}}
+@media(prefers-reduced-motion:reduce){.hand,.callout{transition:none}.crumb{animation-duration:.01s}.game.shake{animation:none}}
