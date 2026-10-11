@@ -3,7 +3,7 @@
   const $ = id => document.getElementById(id);
   const game = new PepperGame();
   let paused = false, muted = false, audio, best = 0, calloutLeft = 0;
-  let heldPointer = null, heldAt = 0, holdTimer = 0, holdRepeat = 0;
+  let heldPointer = null, grab = null, manualHand = false, dragX = 0, dragY = 0;
   let lastTime = performance.now(), lossDelay = 0;
   try { best = Number(localStorage.getItem('pepper-pirate-best')) || 0; } catch {}
   $('best').textContent = best;
@@ -35,7 +35,14 @@
     $('overlayNote').textContent = 'ПРОБЕЛ — ДРАЗНИТЬ · ← — УБРАТЬ · ESC — ПАУЗА';
     $('overlay').classList.remove('hidden'); $('start').focus({ preventScroll: true });
   }
-  function resetHold() { heldPointer = null; holdTimer = 0; holdRepeat = 0; }
+  function resetHold() {
+    const pointer = heldPointer; heldPointer = null; grab = null;
+    $('hand').classList.remove('dragging');
+    if (pointer !== null && $('tapZone').hasPointerCapture(pointer)) $('tapZone').releasePointerCapture(pointer);
+  }
+  function resetPosition() {
+    manualHand = false; dragX = dragY = 0; $('hand').classList.remove('manual');
+  }
   function setPaused(value) {
     if (['ready', 'over'].includes(game.phase)) return;
     paused = value; resetHold();
@@ -51,12 +58,12 @@
   function start() {
     unlockAudio();
     if (paused) { setPaused(false); return; }
-    resetHold(); lossDelay = 0; game.start(); $('game').classList.remove('paused');
+    resetHold(); resetPosition(); lossDelay = 0; game.start(); $('game').classList.remove('paused');
     $('overlay').classList.add('hidden'); $('callout').className = 'callout';
     $('tease').focus({ preventScroll: true }); lastTime = performance.now();
     processEvents(); render();
   }
-  function tease() { if (paused) return; unlockAudio(); game.tap(); processEvents(); render(); }
+  function tease() { if (paused || heldPointer !== null) return; resetPosition(); unlockAudio(); game.tap(); processEvents(); render(); }
   function retreat() { if (paused) return; game.retreat(); resetHold(); processEvents(); render(); }
   $('start').addEventListener('click', start);
   $('tease').addEventListener('click', tease);
@@ -68,19 +75,44 @@
     $('sound').setAttribute('aria-pressed', String(muted));
   });
   const zone = $('tapZone');
+  function handProximity() {
+    const hand = $('handCanvas').getBoundingClientRect(), face = $('dogCanvas').getBoundingClientRect();
+    const width = $('arena').getBoundingClientRect().width;
+    const pepperX = hand.left + hand.width * (game.bites === 0 ? .84 : .68);
+    const pepperY = hand.top + hand.height * [ .78, .7, .59, .55 ][game.bites];
+    const mouthX = face.left + face.width * .22, mouthY = face.top + face.height * .6;
+    return Math.max(0, Math.min(1, 1 - Math.hypot(pepperX - mouthX, (pepperY - mouthY) * 1.15) / (width * .36)));
+  }
+  function paintHand() {
+    $('hand').classList.toggle('manual', manualHand);
+    $('hand').style.setProperty('--drag-x', dragX + 'px');
+    $('hand').style.setProperty('--drag-y', dragY + 'px');
+  }
   zone.addEventListener('pointerdown', e => {
-    if (paused || game.phase !== 'playing' || heldPointer !== null || e.button > 0) return;
-    e.preventDefault(); heldPointer = e.pointerId; heldAt = performance.now();
-    holdTimer = 0; holdRepeat = 0; zone.setPointerCapture(e.pointerId); tease();
+    if (paused || !['playing', 'warning'].includes(game.phase) || heldPointer !== null || e.button > 0) return;
+    e.preventDefault(); unlockAudio();
+    if (!manualHand) { dragX = game.reach * .32 * $('hand').offsetWidth; dragY = 0; }
+    manualHand = true; heldPointer = e.pointerId;
+    grab = { x: e.clientX, y: e.clientY, startX: dragX, startY: dragY };
+    $('hand').classList.add('dragging'); paintHand(); zone.setPointerCapture(e.pointerId);
+    game.position(handProximity()); processEvents(); render();
+  });
+  zone.addEventListener('pointermove', e => {
+    if (e.pointerId !== heldPointer || !grab || paused) return;
+    e.preventDefault();
+    const rect = $('arena').getBoundingClientRect();
+    dragX = Math.max(-rect.width * .1, Math.min(rect.width * .55, grab.startX + e.clientX - grab.x));
+    dragY = Math.max(-rect.height * .35, Math.min(rect.height * .32, grab.startY + e.clientY - grab.y));
+    paintHand(); game.position(handProximity()); processEvents(); render();
   });
   zone.addEventListener('pointerup', e => {
     if (e.pointerId !== heldPointer) return;
-    const isHold = performance.now() - heldAt >= 200; resetHold();
-    if (isHold) retreat();
+    retreat();
   });
-  zone.addEventListener('pointercancel', () => { resetHold(); setPaused(true); });
-  zone.addEventListener('lostpointercapture', () => { if (heldPointer !== null) { resetHold(); setPaused(true); } });
+  zone.addEventListener('pointercancel', e => { if (e.pointerId === heldPointer) { resetHold(); setPaused(true); } });
+  zone.addEventListener('lostpointercapture', e => { if (e.pointerId === heldPointer) { resetHold(); setPaused(true); } });
   zone.addEventListener('click', e => { if (e.detail === 0) tease(); });
+  zone.addEventListener('contextmenu', e => e.preventDefault());
   document.addEventListener('keydown', e => {
     if (e.repeat) return;
     if (e.code === 'Escape' || e.code === 'KeyP') { e.preventDefault(); setPaused(!paused); }
@@ -164,7 +196,8 @@
         tone(event.perfect ? 660 : 440, .2, 'triangle', 990); record(); animateDog(event.perfect ? 'miss' : 'idle');
       }
       if (event.type === 'early') { announce('СМЕЛЕЕ! ПОДНЕСИ БЛИЖЕ'); animateDog('idle'); }
-      if (event.type === 'round') { animateDog('idle'); resetHold(); }
+      if (event.type === 'round') { animateDog('idle'); resetHold(); resetPosition(); }
+      if (event.type === 'saved' || event.type === 'early') resetHold();
       if (event.type === 'bite' || event.type === 'lose') {
         resetHold(); drawHand(); crumbs(); animateDog('bite'); tone(100, .32, 'sawtooth', 35);
         $('game').classList.remove('shake'); void $('game').offsetWidth; $('game').classList.add('shake');
@@ -194,10 +227,6 @@
   function frame(now) {
     const dt = Math.min(.06, (now - lastTime) / 1000); lastTime = now;
     if (!paused) {
-      if (heldPointer !== null && game.phase === 'playing') {
-        holdTimer += dt; holdRepeat += dt;
-        if (holdTimer > .25 && holdRepeat > .28) { holdRepeat = 0; game.tap(); }
-      }
       game.update(dt); processEvents(); render();
       if (calloutLeft > 0) { calloutLeft -= dt; if (calloutLeft <= 0) $('callout').classList.remove('show'); }
       if (game.phase === 'playing') {

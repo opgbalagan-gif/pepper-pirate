@@ -22,3 +22,14 @@ test('idle is safe; difficulty keeps a reaction window', () => {
   const g = new Game(); g.start(); g.update(100); assert.equal(g.heat, 0);
   g.round = 100; warning(g); assert.ok(g.warning >= .32); g.update(NaN); assert.ok(Number.isFinite(g.warning));
 });
+test('dragging away cools the dog; holding close provokes it', () => {
+  const g = new Game(() => .5); g.start(); g.position(.05); g.update(5);
+  assert.equal(g.heat, 0); g.position(.8); g.update(1); const hot = g.heat;
+  assert.ok(hot > 0); g.position(.05); g.update(.5); assert.ok(g.heat < hot);
+  g.position(.9); g.update(5); assert.equal(g.phase, 'warning');
+  g.position(0); assert.equal(g.phase, 'cooldown'); assert.equal(g.bites, 0); assert.equal(g.score, 100);
+});
+test('drag cannot farm points by instantly touching then releasing', () => {
+  const g = new Game(); g.start(); g.position(1); g.retreat(); assert.equal(g.score, 0);
+  g.update(1); assert.equal(g.reach, 0); assert.equal(g.positioned, false);
+});
