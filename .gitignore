@@ -10,3 +10,6 @@ inspect-dog.cjs
 build-dog-sprites.cjs
 capture-game.cjs
 drag-test.cjs
+build-hand-sprites.cjs
+hand-test.cjs
+publish-api.cjs

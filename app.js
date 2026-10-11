@@ -58,7 +58,7 @@
   function start() {
     unlockAudio();
     if (paused) { setPaused(false); return; }
-    resetHold(); resetPosition(); lossDelay = 0; game.start(); $('game').classList.remove('paused');
+    resetHold(); resetPosition(); handMotion.elapsed = 0; lossDelay = 0; game.start(); $('game').classList.remove('paused');
     $('overlay').classList.add('hidden'); $('callout').className = 'callout';
     $('tease').focus({ preventScroll: true }); lastTime = performance.now();
     processEvents(); render();
@@ -137,32 +137,62 @@
     ctx.putImageData(frame, 0, 0);
   }
   const handImage = new Image(), handFrames = [];
+  const handMotion = { ready: false, elapsed: 0, index: -1, bites: -1 };
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  function maskPepper(ctx, stage) {
+    if (stage === 0) return;
+    const y = [600, 440, 367, 324][stage];
+    ctx.save(); ctx.globalCompositeOperation = 'destination-out'; ctx.beginPath();
+    ctx.moveTo(0, y);
+    for (let x = 0; x <= 620; x += 20) ctx.quadraticCurveTo(x + 10, y - 15, x + 20, y);
+    ctx.lineTo(620, 600); ctx.lineTo(0, 600); ctx.closePath(); ctx.fill(); ctx.restore();
+    if (stage < 3) {
+      ctx.save(); ctx.globalCompositeOperation = 'source-atop'; ctx.strokeStyle = '#f7c679'; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.moveTo(0, y - 2);
+      for (let x = 0; x <= 620; x += 20) ctx.quadraticCurveTo(x + 10, y - 17, x + 20, y - 2);
+      ctx.stroke(); ctx.restore();
+    }
+  }
   handImage.onload = () => {
     for (let stage = 0; stage < 4; stage++) {
       const canvas = document.createElement('canvas'); canvas.width = canvas.height = 600;
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
       ctx.drawImage(handImage, 0, 0, 600, 600); keyGreen(ctx, 600, 600);
-      if (stage > 0) {
-        const y = [600, 440, 367, 324][stage];
-        ctx.save(); ctx.globalCompositeOperation = 'destination-out'; ctx.beginPath();
-        ctx.moveTo(0, y);
-        for (let x = 0; x <= 620; x += 20) ctx.quadraticCurveTo(x + 10, y - 15, x + 20, y);
-        ctx.lineTo(620, 600); ctx.lineTo(0, 600); ctx.closePath(); ctx.fill(); ctx.restore();
-        if (stage < 3) {
-          ctx.save(); ctx.globalCompositeOperation = 'source-atop'; ctx.strokeStyle = '#f7c679'; ctx.lineWidth = 6;
-          ctx.beginPath(); ctx.moveTo(0, y - 2);
-          for (let x = 0; x <= 620; x += 20) ctx.quadraticCurveTo(x + 10, y - 17, x + 20, y - 2);
-          ctx.stroke(); ctx.restore();
-        }
-      }
+      maskPepper(ctx, stage);
       handFrames.push(canvas);
     }
     drawHand();
   };
   handImage.src = 'assets/hand.png';
+  (async () => {
+    try {
+      const response = await fetch('assets/hand-animation.json');
+      if (!response.ok) throw Error('Hand animation unavailable');
+      const manifest = await response.json(), image = new Image();
+      await new Promise((resolve, reject) => {
+        image.onload = resolve; image.onerror = reject; image.src = 'assets/' + manifest.file;
+      });
+      Object.assign(handMotion, { ready: true, image, manifest });
+      $('hand').dataset.animation = 'ready'; drawHand();
+    } catch { $('hand').dataset.animation = 'fallback'; }
+  })();
   function drawHand() {
     const ctx = $('handCanvas').getContext('2d'); ctx.clearRect(0, 0, 600, 600);
-    if (handFrames[game.bites]) ctx.drawImage(handFrames[game.bites], 0, 0);
+    if (handMotion.ready) {
+      const { size, columns, frames, seconds } = handMotion.manifest;
+      const index = reducedMotion.matches ? 0 : Math.floor((handMotion.elapsed % seconds) / seconds * frames);
+      handMotion.index = index; handMotion.bites = game.bites;
+      ctx.drawImage(handMotion.image, (index % columns) * size, Math.floor(index / columns) * size, size, size, 0, 0, 600, 600);
+      maskPepper(ctx, game.bites);
+      $('hand').dataset.frame = String(index);
+    } else if (handFrames[game.bites]) ctx.drawImage(handFrames[game.bites], 0, 0);
+  }
+  function updateHand(dt) {
+    if (!handMotion.ready) return;
+    if (!reducedMotion.matches && ['playing', 'warning'].includes(game.phase)) handMotion.elapsed += dt;
+    const { seconds, frames } = handMotion.manifest;
+    const index = reducedMotion.matches ? 0 : Math.floor((handMotion.elapsed % seconds) / seconds * frames);
+    if (index !== handMotion.index || game.bites !== handMotion.bites) drawHand();
   }
   const dogCanvas = $('dogCanvas'); dogCanvas.width = dogCanvas.height = 320;
   const dogAnimation = new DogAnimator(dogCanvas, $('dog'));
@@ -234,6 +264,7 @@
         if (dogAnimation.state !== face) dogAnimation.setState(face);
       }
       dogAnimation.update(dt);
+      updateHand(dt);
       if (lossDelay > 0) {
         lossDelay -= dt;
         if (lossDelay <= 0) overlay('ДОИГРАЛСЯ', 'ПЕРЕЦ КОНЧИЛСЯ.',
