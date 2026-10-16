@@ -21,5 +21,27 @@ button:disabled{cursor:default;filter:saturate(.35);opacity:.5}
 .tap-zone:active{cursor:grabbing}
 .callout{top:5%;font-size:7cqw}
 .speed-lines{right:12%;top:3%;font-size:11cqw}
+.records-icon{font-size:4cqw}
+.records-button{width:100%;margin-top:3cqw;padding:2.5cqw;background:transparent;border:1px solid #f5ebd560;font:600 3.5cqw Oswald,Impact,sans-serif;letter-spacing:1px;min-height:40px}
+.overlay-card{max-height:94%;overflow-y:auto}
+.leaderboard-dialog{width:min(92vw,430px);max-height:88svh;padding:24px;background:#11181a;color:var(--cream);border:1px solid #e8d5b180;box-shadow:8px 9px 0 #0005;overscroll-behavior:contain}
+.leaderboard-dialog::backdrop{background:#05090de8;backdrop-filter:blur(5px)}
+.leaderboard-dialog h2{font:italic 700 32px/1.1 Oswald,Impact,sans-serif;margin:12px 0 20px}
+.leaderboard-dialog .eyebrow{color:#c6fb66;font-size:10px;letter-spacing:2px}
+.leaderboard-scroll{max-height:48svh;overflow:auto}
+.leaderboard-dialog table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:14px}
+.leaderboard-dialog th{text-align:right;font-size:10px;letter-spacing:1px;color:#aeb7ac;padding:8px 4px;border-bottom:1px solid #f5ebd540}
+.leaderboard-dialog th:nth-child(-n+2){text-align:left}
+.leaderboard-dialog td{padding:11px 4px;border-bottom:1px solid #f5ebd51c;text-align:right}
+.leaderboard-dialog td:first-child{text-align:left;color:#aeb7ac;width:30px}
+.leaderboard-dialog td:nth-child(2){text-align:left}
+.leaderboard-dialog strong{font:600 23px Oswald,Impact,sans-serif}
+.leaderboard-dialog small{display:block;color:#aeb7ac;font-size:10px;margin-top:3px}
+.leaderboard-dialog tr:first-child strong{color:#c6fb66}
+.leaderboard-dialog .latest-result{background:#c6fb6610}
+.leaderboard-dialog .latest-result small{color:#c6fb66}
+.leaderboard-note,.leaderboard-empty{font-size:13px;line-height:1.5;color:#aeb7ac}
+.leaderboard-empty{padding:16px 0;color:var(--cream)}
+.leaderboard-close{width:100%;min-height:44px;margin-top:8px;background:#e53529;border:2px solid var(--cream);font:600 18px Oswald,Impact,sans-serif}
 @media(max-height:650px) and (min-width:501px){.sidebar{padding-block:16px;width:275px}.side-copy h1{font-size:48px;margin:14px 0}.side-copy p,.side-copy ol,.side-rule{display:none}.right-rail{padding:20px 0}}
 @media(prefers-reduced-motion:reduce){.hand,.callout{transition:none}.crumb{animation-duration:.01s}.game.shake{animation:none}}

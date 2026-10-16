@@ -1,1 +1,1 @@
-{"name":"pepper-pirate","version":"1.0.0","private":true,"scripts":{"start":"node server.cjs","test":"node --test game.test.cjs"}}
+{"name":"pepper-pirate","version":"1.0.0","private":true,"scripts":{"start":"node server.cjs","test":"node --test game.test.cjs leaderboard.test.cjs"}}

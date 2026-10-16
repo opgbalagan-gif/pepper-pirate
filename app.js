@@ -2,6 +2,10 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const game = new PepperGame();
+  let localStore;
+  try { localStore = window.localStorage; } catch {}
+  const leaderboard = new LocalLeaderboard(localStore);
+  let attemptId = null, latestResult = null, latestRank = null;
   let paused = false, muted = false, audio, best = 0, calloutLeft = 0;
   let heldPointer = null, grab = null, manualHand = false, dragX = 0, dragY = 0;
   let lastTime = performance.now(), lossDelay = 0;
@@ -33,8 +37,36 @@
     $('overlayTag').textContent = tag; $('overlayTitle').textContent = title;
     $('overlayText').textContent = description; $('start').textContent = action;
     $('overlayNote').textContent = 'ПРОБЕЛ — ДРАЗНИТЬ · ← — УБРАТЬ · ESC — ПАУЗА';
-    $('overlay').classList.remove('hidden'); $('start').focus({ preventScroll: true });
+    $('overlay').classList.remove('hidden');
+    if (!$('leaderboardDialog').open) $('start').focus({ preventScroll: true });
   }
+  function showLeaderboard() {
+    if (!['ready', 'over'].includes(game.phase) && !paused) setPaused(true);
+    const rows = $('leaderboardRows'); rows.replaceChildren();
+    $('leaderboardEmpty').hidden = leaderboard.rows.length > 0;
+    $('leaderboardTable').hidden = leaderboard.rows.length === 0;
+    $('leaderboardNote').textContent = leaderboard.persistent
+      ? '10 лучших попыток в этом браузере. После очистки данных браузера рекорды исчезнут.'
+      : 'Браузер не разрешил сохранение. Эти результаты доступны до закрытия страницы.';
+    const numbers = new Intl.NumberFormat('ru-RU');
+    leaderboard.rows.forEach((entry, index) => {
+      const row = document.createElement('tr');
+      if (entry.id === latestResult) row.classList.add('latest-result');
+      const place = document.createElement('td'); place.textContent = String(index + 1).padStart(2, '0');
+      const result = document.createElement('td'), score = document.createElement('strong'), detail = document.createElement('small');
+      score.textContent = numbers.format(entry.score);
+      detail.textContent = new Date(entry.time).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) +
+        (entry.id === latestResult ? ' · ПОСЛЕДНЯЯ' : '');
+      result.append(score, detail);
+      const round = document.createElement('td'); round.textContent = entry.round;
+      const combo = document.createElement('td'); combo.textContent = entry.combo;
+      row.append(place, result, round, combo); rows.append(row);
+    });
+    $('leaderboardDialog').showModal();
+  }
+  $('records').addEventListener('click', showLeaderboard);
+  $('overlayRecords').addEventListener('click', showLeaderboard);
+  $('closeLeaderboard').addEventListener('click', () => $('leaderboardDialog').close());
   function resetHold() {
     const pointer = heldPointer; heldPointer = null; grab = null;
     $('hand').classList.remove('dragging');
@@ -59,6 +91,7 @@
     unlockAudio();
     if (paused) { setPaused(false); return; }
     resetHold(); resetPosition(); handMotion.elapsed = 0; lossDelay = 0; game.start(); $('game').classList.remove('paused');
+    attemptId = window.crypto?.randomUUID?.() || Date.now() + '-' + Math.random().toString(36).slice(2);
     $('overlay').classList.add('hidden'); $('callout').className = 'callout';
     $('tease').focus({ preventScroll: true }); lastTime = performance.now();
     processEvents(); render();
@@ -114,6 +147,7 @@
   zone.addEventListener('click', e => { if (e.detail === 0) tease(); });
   zone.addEventListener('contextmenu', e => e.preventDefault());
   document.addEventListener('keydown', e => {
+    if ($('leaderboardDialog').open) return;
     if (e.repeat) return;
     if (e.code === 'Escape' || e.code === 'KeyP') { e.preventDefault(); setPaused(!paused); }
     if (['Space', 'ArrowLeft', 'KeyA'].includes(e.code) && !paused && !['ready', 'over'].includes(game.phase)) {
@@ -234,6 +268,8 @@
         announce(event.type === 'lose' ? 'ПЕРЕЦ ЗАКОНЧИЛСЯ!' : 'КУСЬ! −1', false);
         if (event.type === 'lose') {
           record(); lossDelay = .85;
+          latestResult = attemptId;
+          latestRank = leaderboard.add({ id: attemptId, score: game.score, round: game.round, combo: game.bestCombo, time: Date.now() });
         }
       }
     }
@@ -268,7 +304,9 @@
       if (lossDelay > 0) {
         lossDelay -= dt;
         if (lossDelay <= 0) overlay('ДОИГРАЛСЯ', 'ПЕРЕЦ КОНЧИЛСЯ.',
-          'Счёт: ' + game.score + '. Лучшая серия: ' + game.bestCombo + '. Ещё один перчик?', 'ЕЩЁ ПОПЫТКА →');
+          'Счёт: ' + game.score + '. Лучшая серия: ' + game.bestCombo + '.' +
+          (latestRank ? ' Место в твоём топе: ' + latestRank + '.' : ' До топ-10 чуть-чуть не хватило.') +
+          (leaderboard.persistent ? '' : ' Результат сохранён только до закрытия страницы.'), 'ЕЩЁ ПОПЫТКА →');
       }
     }
     requestAnimationFrame(frame);

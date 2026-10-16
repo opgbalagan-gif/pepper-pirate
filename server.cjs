@@ -1,7 +1,7 @@
 const http = require('node:http'), fs = require('node:fs'), path = require('node:path');
 const base = __dirname, port = Number(process.env.PORT || 4174);
 const types = {'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript','.png':'image/png','.webp':'image/webp','.mp4':'video/mp4','.svg':'image/svg+xml','.json':'application/json'};
-const allowed = new Set(['index.html', 'style.css', 'polish.css', 'engine.js', 'app.js', 'dog-animation.js']);
+const allowed = new Set(['index.html', 'style.css', 'polish.css', 'engine.js', 'app.js', 'dog-animation.js', 'leaderboard.js']);
 http.createServer((req, res) => {
   let name;
   try { name = decodeURIComponent(new URL(req.url, 'http://localhost').pathname).replace(/^\/+/, '') || 'index.html'; }
